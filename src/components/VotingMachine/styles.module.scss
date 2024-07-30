@@ -1,0 +1,310 @@
+$spacing-base: 4px;
+
+$shadow-alpha-multiplier: 0.5;
+$shadow-01: 0 1px 3px rgba(0, 0, 0, 0.12 * $shadow-alpha-multiplier), 0 1px 2px rgba(0, 0, 0, 0.24 * $shadow-alpha-multiplier);
+$shadow-02: 0 3px 6px rgba(0, 0, 0, 0.16 * $shadow-alpha-multiplier), 0 3px 6px rgba(0, 0, 0, 0.23 * $shadow-alpha-multiplier);
+$shadow-03: 0 10px 20px rgba(0, 0, 0, 0.19 * $shadow-alpha-multiplier), 0 6px 6px rgba(0, 0, 0, 0.23 * $shadow-alpha-multiplier);
+$shadow-04: 0 14px 28px rgba(0, 0, 0, 0.25 * $shadow-alpha-multiplier), 0 10px 10px rgba(0, 0, 0, 0.22 * $shadow-alpha-multiplier);
+$shadow-05: 0 19px 38px rgba(0, 0, 0, 0.30 * $shadow-alpha-multiplier), 0 15px 12px rgba(0, 0, 0, 0.22 * $shadow-alpha-multiplier);
+
+$color-surface: #FFF;
+$color-surface-text: #263238;
+$color-surface-secondary: #E8EAF6;
+$color-surface-secondary-text: #263238;
+$color-surface-highlight: #2196F3;
+$color-surface-highlight-text: #E3F2FD;
+
+$easing: cubic-bezier(0.87, 0, 0.13, 1);
+
+$bp-mobile-max: 1200px;
+
+@function spacing($multiplier) {
+  @return $multiplier * $spacing-base;
+}
+
+@mixin surface {
+  background-color: $color-surface;
+  color: $color-surface-text;
+}
+
+@mixin surface-secondary {
+  background-color: $color-surface-secondary;
+  color: $color-surface-secondary-text;
+}
+
+@mixin surface-highlight {
+  background-color: $color-surface-highlight;
+  color: $color-surface-highlight-text;
+}
+
+@mixin responsive-prop($prop, $mobile-value, $desktop-value) {
+  @media (width <= $bp-mobile-max) {
+    #{$prop}: $mobile-value;
+  }
+  @media (width > $bp-mobile-max) {
+    #{$prop}: $desktop-value;
+  }
+}
+
+body {
+  &, & * {
+    font-family: Montserrat, sans-serif;
+    font-size: 16px;
+  }
+}
+
+h1, h2, h3, h4, p {
+  line-height: 1.5em;
+  margin: 0;
+  font-weight: 400;
+}
+
+h1 {
+  font-size: 2.5rem;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+h3 {
+  font-size: 1.75rem;
+}
+
+h4 {
+  font-size: 1.5rem;
+}
+
+.textBold {
+  font-weight: 700;
+}
+
+.textCenter {
+  text-align: center;
+}
+
+button {
+  padding: spacing(2) spacing(3);
+  border-radius: spacing(2);
+
+  box-shadow: $shadow-02;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: all 180ms $easing;
+
+  @include surface;
+
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    @include surface-secondary;
+  }
+}
+
+.votingMachine {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  @include surface-secondary;
+
+  .votingMachineContent {
+    position: absolute;
+    max-width: 1200px;
+
+    margin: spacing(8);
+    padding: spacing(8);
+    gap: spacing(8);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    border-radius: spacing(4);
+    box-shadow: $shadow-01;
+
+    @include surface;
+  }
+
+  .titleWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .candidates {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    align-self: stretch;
+  }
+
+  .candidatesRow {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+    gap: spacing(8);
+  }
+
+  .candidate {
+    position: relative;
+    display: flex;
+    flex: 1;
+
+    gap: spacing(8);
+    padding: spacing(8);
+    border-radius: spacing(4);
+    background-color: $color-surface-secondary;
+
+    @include responsive-prop(align-items, center, center);
+
+    &:nth-child(1) {
+      @include responsive-prop(flex-direction, column, row-reverse);
+
+      .candidateInfo {
+        @include responsive-prop(align-items, center, flex-end);
+
+        h4, p {
+          @include responsive-prop(text-align, center, right);
+        }
+      }
+    }
+
+    &:nth-child(2) {
+      @include responsive-prop(flex-direction, column, row);
+
+      .candidateInfo {
+        @include responsive-prop(align-items, center, flex-start);
+
+        h4, p {
+          @include responsive-prop(text-align, center, left);
+        }
+      }
+    }
+  }
+
+  .candidateInfo {
+    display: flex;
+    flex-direction: column;
+    gap: spacing(3);
+  }
+
+  .candidateAvatarWrapper {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 96px;
+    background-color: $color-surface;
+    box-shadow: $shadow-01;
+
+    @include responsive-prop(min-width, 96px, 128px);
+    @include responsive-prop(min-height, 96px, 128px);
+
+    i {
+      font-size: 56px;
+    }
+  }
+
+  .candidateNumber {
+    position: absolute;
+    left: spacing(-2);
+    bottom: spacing(-2);
+    width: 48px;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    box-shadow: $shadow-01;
+    border-radius: 50%;
+
+    @include surface-highlight;
+  }
+
+  .buckets {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-evenly;
+    align-self: stretch;
+    gap: spacing(8);
+  }
+
+  .bucket {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    height: 240px;
+    padding: spacing(4);
+    border-radius: spacing(4);
+
+    @include surface-secondary;
+  }
+
+  .bucketInfo {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .bucketVotes {
+    flex: 1;
+    align-self: stretch;
+  }
+}
+
+@keyframes vote-appearing-anim {
+  from {
+    transform: translate(-50%, -50%) scale(0.0);
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.0);
+  }
+}
+
+.vote {
+  position: absolute;
+  width: 0;
+  height: 0;
+
+  .votePaper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    position: absolute;
+    width: 96px;
+    height: 96px;
+    border-radius: spacing(1);
+    transform: translate(-50%, -50%);
+
+    box-shadow: $shadow-02;
+    border: #EFEFEF 1px solid;
+
+    animation-name: vote-appearing-anim;
+    animation-duration: 400ms;
+    animation-timing-function: $easing;
+    animation-iteration-count: 1;
+
+    @include surface;
+  }
+}
