@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { observer } from 'mobx-react-lite';
 import fonts from 'google-fonts';
 import classNames from 'classnames';
@@ -9,6 +8,8 @@ import Store, { PartialVote } from '@/store';
 import Anime, { AnimeAnimParams } from 'animejs';
 
 import 'simple-line-icons';
+import { createPortal } from 'react-dom';
+import Lottie, { AnimationItem } from 'lottie-web';
 
 fonts.add({
   Montserrat: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
@@ -18,8 +19,15 @@ const VOTE_ELEMENT_SIZE = 96;
 
 export const Machine = observer(() => {
   const animationState = useRef({ running: 0 });
+  const wandAnimationRef = useRef<HTMLDivElement>(null);
+  const face01AnimationRef = useRef<HTMLDivElement>(null);
+  const face02AnimationRef = useRef<HTMLDivElement>(null);
+
+  const [forceUpdateIndex, setForceUpdateIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isAplyingMagic, setIsApplyingMagic] = useState(false);
+  const [isApplyingMagic, setIsApplyingMagic] = useState(false);
+
+  const disableAddVoteButton = isAnimating || isApplyingMagic;
 
   const addVote = useCallback((vote: PartialVote) => {
     Store.addVote(vote);
@@ -42,12 +50,13 @@ export const Machine = observer(() => {
 
   useEffect(() => {
     const tid = setTimeout(async () => {
+      if (!Store.hasMagicToApply()) return;
+
+      const sleep = (delay: number) => new Promise((accept) => setTimeout(accept, delay));
+
       setIsApplyingMagic(true);
-
-      // while(true) {
-      //   Store.targetCandidate;
-      // }
-
+      await sleep(1500);
+      while (Store.applyNextMagic()) await sleep(1000);
       setIsApplyingMagic(false);
     }, 2500);
 
@@ -55,6 +64,19 @@ export const Machine = observer(() => {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [Store.votes.length]);
+
+  useLayoutEffect(() => {
+    const c1 = wandAnimationRef.current;
+    const c2 = face01AnimationRef.current;
+    const c3 = face02AnimationRef.current;
+    if (!c1 || !c2 || !c3) return;
+
+    const animations: Array<AnimationItem> = [];
+    animations.push(Lottie.loadAnimation({ container: c1, path: '/animations/wand.json' }));
+    animations.push(Lottie.loadAnimation({ container: c2, path: '/animations/face-02.json' }));
+    animations.push(Lottie.loadAnimation({ container: c3, path: '/animations/face-01.json' }));
+    return () => animations.forEach((a) => a.destroy());
+  }, []);
 
   useLayoutEffect(() => {
     const tid = setTimeout(() => {
@@ -94,7 +116,7 @@ export const Machine = observer(() => {
             if (!bucketElement) return;
 
             const bucketRect = bucketElement.getBoundingClientRect();
-            const translateX = bucketRect.x + bucketRect.width / 2;
+            const translateX = bucketRect.left + bucketRect.width / 2;
 
             const sigmoid = (x: number) => 2 * (1 / (1 + Math.exp(-x * 2))) - 1.0;
 
@@ -128,70 +150,87 @@ export const Machine = observer(() => {
     return () => clearTimeout(tid);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Store.votes.length]);
+  }, [Store.votes, forceUpdateIndex]);
+
+  useLayoutEffect(() => {
+    const handler = () => setForceUpdateIndex((curr) => curr + 1);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   return (
     <div className={styles.votingMachine}>
       <div className={styles.votingMachineContent}>
         <div className={styles.titleWrapper}>
           <h1 className={styles.textBold}>A Máquina Mágica de Votos</h1>
-          <p>Vote o quanto quiser, o resultado é sempre 51%</p>
+          <h4>Vote o quanto quiser, o candidato corrupto sempre vence...</h4>
         </div>
 
         <div className={styles.candidates}>
           <div className={styles.candidatesRow}>
-            {Store.candidates.map(({ id, name, bio }) => (
+            {Store.candidates.map(({ id, name, bio }, index) => (
               <div key={id} className={styles.candidate}>
-                <div className={styles.candidateAvatarWrapper}>
-                  <i className={'icon-user'} />
+                <div key={id} className={styles.candidateContent}>
+                  <div className={styles.candidateAvatarWrapper}>
+                    <div ref={index === 0 ? face01AnimationRef : face02AnimationRef} />
+                  </div>
+
+                  <div className={styles.candidateInfo}>
+                    <h4 className={classNames(styles.textBold, styles.textCenter)}>{name}</h4>
+                    <h2 className={classNames(styles.textBold, styles.textCenter)} data-candidate-stats={id}>
+                      0 votos (0.0%)
+                    </h2>
+
+                    <p className={classNames(styles.textCenter, styles.hideOnMobile)}>{bio}</p>
+
+                    <div className={styles.candidateActions}>
+                      <button disabled={disableAddVoteButton} onClick={() => addVote({ candidateId: id })}>
+                        Votar neste candidato
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className={styles.candidateInfo}>
-                  <h4 className={classNames(styles.textBold)}>{name}</h4>
-                  <p>{bio}</p>
-                  <button disabled={isAnimating} onClick={() => addVote({ candidateId: id })}>
-                    Votar neste candidato
-                  </button>
+
+                <div className={styles.bucket}>
+                  <div className={styles.bucketVotes} data-bucket={id} />
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className={styles.buckets}>
-          {Store.candidates.map(({ id, name }) => {
-            return (
-              <div key={id} className={styles.bucket}>
-                <div className={styles.bucketInfo}>
-                  <p className={styles.textBold}>{name}</p>
-                  <h4 className={styles.textBold} data-candidate-stats={id} />
+        {[...Store.votes.map((vote, index) => ({ vote, index }))]
+          .sort((a, b) => a.vote.id - b.vote.id)
+          .map(({ vote: { id }, index }) =>
+            createPortal(
+              <div
+                key={id}
+                className={styles.vote}
+                data-vote={id}
+                style={{
+                  zIndex: index,
+                  transform: [
+                    `translateX(${window.innerWidth / 2}px)`,
+                    `translateY(${window.innerHeight / 2}px)`,
+                    `rotateX(0deg)`,
+                    `rotateZ(${Math.pow((index % 6) - 3, 2.0) * 2}deg)`,
+                  ].join(' '),
+                }}
+              >
+                <div className={styles.votePaper} data-vote-paper={id}>
+                  <p className={styles.textBold}>VOTO</p>
                 </div>
-                <div className={styles.bucketVotes} data-bucket={id} />
-              </div>
-            );
-          })}
-        </div>
+              </div>,
+              document.body,
+            ),
+          )}
 
-        {Store.votes.map(({ id }, index) =>
-          createPortal(
-            <div
-              key={id}
-              className={styles.vote}
-              data-vote={id}
-              style={{
-                transform: [
-                  `translateX(${window.innerWidth / 2}px)`,
-                  `translateY(${window.innerHeight / 2}px)`,
-                  `rotateX(0deg)`,
-                  `rotateZ(${Math.pow((index % 6) - 3, 2.0) * 2}deg)`,
-                ].join(' '),
-              }}
-            >
-              <div className={styles.votePaper} data-vote-paper={id}>
-                <p className={styles.textBold}>1 vote</p>
-              </div>
-            </div>,
-            document.body,
-          ),
+        {createPortal(
+          <div
+            ref={wandAnimationRef}
+            className={classNames(styles.wandAnimation, { [styles.active]: isApplyingMagic })}
+          />,
+          document.body,
         )}
       </div>
     </div>

@@ -25,7 +25,7 @@ export class Store {
   candidates: Array<Candidate> = [
     {
       id: CandidateID.CANDIDATE_1,
-      name: 'Jenisvaldo Catanduvas',
+      name: 'Jenisvaldo Corrupto',
       code: '11',
       bio: `
         Seu histórico de corrupção é antigo e conhecido, mas muitas pessoas lesadas
@@ -36,7 +36,7 @@ export class Store {
     },
     {
       id: CandidateID.CANDIDATE_2,
-      name: 'Abirobaldo Jabuticaba',
+      name: 'Abirobaldo Honesto',
       code: '85',
       bio: `
         Teve pais que lhe ensinaram a ser honesto. Sonha em melhorar a 
@@ -54,13 +54,45 @@ export class Store {
   constructor() {
     makeAutoObservable(this);
 
-    new Array(10).fill(null).forEach(() => {
-      this.addVote({ candidateId: CandidateID.CANDIDATE_1 });
+    this.candidates.forEach(({ id }) => {
+      new Array(5).fill(null).forEach(() => {
+        this.addVote({ candidateId: id });
+      });
     });
   }
 
   addVote(vote: PartialVote) {
     this.votes = [...this.votes, { id: ++this.VOTE_SERIAL, ...vote }];
+  }
+
+  hasMagicToApply() {
+    const { votesPercent } = this.getTargetCandidateStats();
+    return votesPercent < this.targetPercentage;
+  }
+
+  applyNextMagic() {
+    if (this.hasMagicToApply()) {
+      const targetVotesIndexes = this.votes
+        .map((v, i) => (v.candidateId !== this.targetCandidate ? i : -1))
+        .filter((i) => i !== -1);
+
+      if (targetVotesIndexes.length) {
+        const targetVoteIndex = [...targetVotesIndexes].reverse()[0];
+        const targetVote = this.votes[targetVoteIndex];
+
+        this.votes = [
+          ...this.votes.slice(0, targetVoteIndex),
+          ...this.votes.slice(targetVoteIndex + 1),
+          { ...targetVote, candidateId: this.targetCandidate },
+        ];
+        return true;
+      }
+    }
+    return false;
+  }
+
+  getTargetCandidateStats() {
+    return this.getCandidateStats(this.targetCandidate);
   }
 
   getCandidateStats(id: CandidateID) {
